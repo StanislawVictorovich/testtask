@@ -1,0 +1,64 @@
+version: '3'
+services:
+  visit-log-generator:
+    image: tt/visit-log-generator:latest
+    environment:
+      - ENABLE_INIT_DAEMON=false
+      - SPARK_MASTER=local[1]
+      - SPARK_APPLICATION_ARGS=local[4] data/generatedVisitLogs 1000000 10
+    volumes:
+      - ./app-data:/opt/docker/data
+
+  snapshot-composer:
+    image: tt/snapshot-composer:latest
+    environment:
+      - ENABLE_INIT_DAEMON=false
+      - SPARK_APPLICATION_ARGS=local[4] data/generatedVisitLogs data/snapshots
+    volumes:
+      - ./app-data:/opt/docker/data
+
+  snapshot-merger:
+    image: tt/snapshot-merger:latest
+    environment:
+      - ENABLE_INIT_DAEMON=false
+      - SPARK_APPLICATION_ARGS=local[4] data/snapshots data/snapshots2 data/snapshotsMerged
+    volumes:
+      - ./app-data:/opt/docker/data
+
+  snapshot-to-storage:
+    image: tt/snapshot-to-storage:latest
+    environment:
+      - ENABLE_INIT_DAEMON=false
+      - SPARK_APPLICATION_ARGS=local[4] data/snapshotsMerged mysql:3306/month_snapshot,root,rOOt
+    volumes:
+      - ./app-data:/opt/docker/data
+
+  test:
+    image: tt/test:latest
+    environment:
+      - ENABLE_INIT_DAEMON=false
+    volumes:
+      - ..:/app/
+    entrypoint: ["tail", "-f", "/dev/null"]
+
+  mysql:
+    image: mysql:8.0.21
+    environment:
+      MYSQL_ROOT_PASSWORD: rOOt
+    ports:
+      - "3306:3306"
+    volumes:
+      - ./sql/create_structure.sql:/create_structure.sql
+
+
+
+#  spark-worker-2:
+#    image: bde2020/spark-worker:3.0.0-hadoop3.2
+#    container_name: spark-worker-2
+#    depends_on:
+#      - spark-master
+#    ports:
+#      - "8081:8081"
+#    environment:
+#      - "SPARK_MASTER=spark://spark-master:7077"
+#      - "constraint:node==<yourworkernode>"

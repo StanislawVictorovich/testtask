@@ -1,0 +1,1 @@
+docker build -t bde2020/spark-submit:3.0.0-hadoop3.2  .
